@@ -1,10 +1,10 @@
-QT -= gui
-
 QT += sql
 
 QT       += core gui axcontainer
 
-CONFIG += c++11 console
+QT += widgets
+
+CONFIG += c++11
 CONFIG -= app_bundle
 
 # The following define makes your compiler emit warnings if you use
@@ -23,10 +23,21 @@ SOURCES += \
     csharptool.cpp \
     exceltool.cpp \
     sqlitetool.cpp \
-    log.cpp
+    log.cpp \
+    sqliteprocessresult.cpp \
+    sqlite3generatetool.cpp \
+    config.cpp \
+    workthread.cpp
 
 HEADERS += \
     csharptool.h \
     exceltool.h \
     sqlitetool.h \
-    log.h
+    log.h \
+    sqliteprocessresult.h \
+    sqlite3generatetool.h \
+    config.h \
+    workthread.h
+
+FORMS += \
+    sqlite3generatetool.ui

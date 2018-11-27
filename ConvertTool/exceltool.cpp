@@ -6,9 +6,16 @@
 #include "sqlitetool.h"
 #include <thread>
 #include "csharptool.h"
+#include <QFile>
+#include <list>
+#include "sqliteprocessresult.h"
+#include <exception>
+#include <QDir>
+#include <thread>
+#include <QThread>
 
-ExcelTool::ExcelTool(const QString& excelPath,const QString& databasePath,const QString& scriptFilePath)
-    :_excelPath(excelPath),
+ExcelTool::ExcelTool(const QString& excelPath,const QString& databasePath,const QString& scriptFilePath,QObject* parent)
+    :_excelPath(excelPath),Log(parent),
       _databasePath(databasePath),
       _scriptFilePath(scriptFilePath)
 {
@@ -33,29 +40,36 @@ void ExcelTool::initExcel()
     _excel->setProperty("DisplayAlerts",false);
 }
 
-void ExcelTool::Process()
+QList<SqliteProcessResult> ExcelTool::Process()
 {
     try{
         std::shared_ptr<QAxObject> _workBooks(_excel->querySubObject("WorkBooks"));
         std::shared_ptr<QAxObject> _workBook(_workBooks->querySubObject("Open(const QString &)",_excelPath));
         std::shared_ptr<QAxObject> _work_sheets(_workBook->querySubObject("Sheets"));
         int count = _work_sheets->property("Count").toInt();
+        emit startProcess(count);
+        QList<SqliteProcessResult> results;
+        QFile databaseFile(_databasePath);
+        if(databaseFile.exists())
+        {
+            databaseFile.remove();
+        }
         for(int i = 1;i <= count;++i)
         {
+            emit updateProgess(i);
             std::shared_ptr<QAxObject> work_sheet(_workBook->querySubObject("Sheets(int)",i));
             QString tableName = work_sheet->property("Name").toString();
             auto contents = getExcelContents(work_sheet);
             print_message("Excel Table " + tableName + " load complete!");
-            std::thread generateCSharpScriptThread{[&](){
-                CSharpTool csharpTool(_scriptFilePath);
-                csharpTool.generate_csharp_script(tableName,contents);
-                print_message("C Sharp file generate complete!");
-            }};
+
+            CSharpTool csharpTool(_scriptFilePath);
+            csharpTool.generate_csharp_script(tableName,contents);
+            print_message("C Sharp file generate complete!");
             SqliteTool sqliteTool(_databasePath);
-            sqliteTool.generate_table(tableName,contents);
-            generateCSharpScriptThread.join();
+            results.push_back(sqliteTool.generate_table(tableName,contents));
         }
         _workBook->dynamicCall("Close(Boolean)",false);
+        return results;
     }
     catch(std::exception e)
     {
@@ -99,6 +113,11 @@ std::vector<QString> ExcelTool::getPropertyies(std::shared_ptr<QAxObject> work_s
         QVariant cell_value = cell->property("Value");
         if(!cell_value.toString().isEmpty())
         {
+            if(cell_value.toString().split('-').count() != 2)
+            {
+                emit error(QString("Type err,on %1").arg(cell_value.toString()));
+                QThread::currentThread()->terminate();
+            }
             properties.push_back(cell_value.toString());
         }
     }

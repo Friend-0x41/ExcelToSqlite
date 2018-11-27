@@ -3,18 +3,24 @@
 
 #include <QString>
 #include "log.h"
-#include <vector>
 #include <memory>
+#include "sqliteprocessresult.h"
+#include <QObject>
+#include <QList>
 
 class QAxObject;
 
 class ExcelTool : public Log
 {
+    Q_OBJECT
 public:
-    ExcelTool(const QString& excelPath,const QString& databasePath,const QString& scriptFilePath);
+    ExcelTool(const QString& excelPath,const QString& databasePath,const QString& scriptFilePath,QObject* parent = nullptr);
     ~ExcelTool();
-    void Process();
-
+    QList<SqliteProcessResult> Process();
+signals:
+    void startProcess(int);
+    void updateProgess(int);
+    void error(QString);
 private:
     void initExcel();
     std::vector<std::vector<QString>> getExcelContents(std::shared_ptr<QAxObject> work_sheet);

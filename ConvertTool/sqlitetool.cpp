@@ -1,10 +1,10 @@
 #include "sqlitetool.h"
 #include <QDir>
 #include <QAxObject>
-#include <QFile>
+#include "exceltool.h"
 
-SqliteTool::SqliteTool(const QString& databasePath)
-    :_databasePath(databasePath)
+SqliteTool::SqliteTool(const QString& databasePath,QObject* parent)
+    :_databasePath(databasePath),Log(parent)
 {
     if (QSqlDatabase::contains("qt_sql_default_connection"))
     {
@@ -31,22 +31,19 @@ SqliteTool::~SqliteTool()
     }
 }
 
-void SqliteTool::generate_table(const QString& tableName,const std::vector<std::vector<QString>>& contents)
+SqliteProcessResult SqliteTool::generate_table(const QString& tableName,const std::vector<std::vector<QString>>& contents)
 {
-    QFile file(_databasePath);
-    if(file.exists())
-    {
-        file.remove();
-    }
     auto properties = get_property_nameAndType(contents[0]);
     createTable(tableName,properties);
-    std::for_each(contents.cbegin() + 1,contents.cend(),[&](const std::vector<QString> values){
-        insert(tableName,properties,values);
+    SqliteProcessResult result(tableName);
+    std::for_each(contents.cbegin() + 1,contents.cend(),[&](const std::vector<QString>& values){
+        insert(tableName,properties,values,result);
     });
     print_message("Table " + tableName + " generate complete!");
+    return result;
 }
 
-void SqliteTool::insert(const QString& tableName,const std::vector<std::pair<QString,QString>>& properties,const std::vector<QString>& values)
+void SqliteTool::insert(const QString& tableName,const std::vector<std::pair<QString,QString>>& properties,const std::vector<QString>& values,SqliteProcessResult& result)
 {
     QString type;
     QString insert_properties_statement = "INSERT INTO " + tableName + "(";
@@ -62,7 +59,13 @@ void SqliteTool::insert(const QString& tableName,const std::vector<std::pair<QSt
             }
             else if(type == "string")
             {
-                insert_value_statement += "'" +  values[i] + "'" + ",";
+                QString s = values[i];
+                s.replace('\'',"''");
+                insert_value_statement += "'" +  s + "'" + ",";
+            }
+            else if(type == "float")
+            {
+                insert_value_statement += QString::number(values[i].toFloat()) + ",";
             }
             insert_properties_statement += properties[i].first + ",";
         }
@@ -78,9 +81,12 @@ void SqliteTool::insert(const QString& tableName,const std::vector<std::pair<QSt
     if(!sqlQuery.exec())
     {
         print_message(sqlQuery.lastError().text());
+        result.AddResult(false,sqlQuery.lastError().text(),insert_statement);
     }
-    else{
+    else
+    {
         print_message("Insert Success!");
+        result.AddResult();
     }
 }
 
@@ -101,6 +107,10 @@ void SqliteTool::createTable(const QString& tableName,const std::vector<std::pai
         else if(properties[i].second == "int")
         {
             type = " INT";
+        }
+        else if(properties[i].second == "float")
+        {
+            type = " FLOAT";
         }
         create_sql += "," + properties[i].first + type;
     }
