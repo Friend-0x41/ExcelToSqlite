@@ -21,10 +21,8 @@ Log::~Log()
 
 void Log::print_message(QString msg)
 {
-    char str[2048];
-    memset(str,2048,0);
-    sprintf(str,"%d\t%s\n",_count++,msg.toStdString().c_str());
-    out.write(str,strlen(str));
+    std::string s = msg.toStdString();
+    out.write(s.c_str(),s.length());
     out.flush();
 }
 
