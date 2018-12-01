@@ -72,7 +72,7 @@ void Sqlite3GenerateTool::on_startBtn_clicked()
     ui->ExcelPathBtn->setEnabled(false);
     ui->outputPathLineEdit->setEnabled(false);
     ui->outputPathSelectBtn->setEnabled(false);
-    WorkThread* worker = new WorkThread(ui->excelPathLineEdit->text(),ui->outputPathLineEdit->text() + "/city,ntf",ui->outputPathLineEdit->text());
+    WorkThread* worker = new WorkThread(ui->excelPathLineEdit->text(),ui->outputPathLineEdit->text() + "/city.ntf",ui->outputPathLineEdit->text());
     worker->moveToThread(_thread);
     connect(worker,&WorkThread::finshed,this,&Sqlite3GenerateTool::onFinshed);
     connect(worker,&WorkThread::start,this,&Sqlite3GenerateTool::onStartProcess);
